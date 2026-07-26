@@ -1,11 +1,12 @@
 /**
- * Busy Item Search - Main Application Logic
+ * Busy Item Search - Table Layout & Custom Data Logic
  */
 
 let rawData = [];
 let filteredData = [];
 const CHUNK_SIZE = 50;
 let currentRenderIndex = 0;
+let forceShowAll = false; // Remembers if the user clicked "Show All"
 
 const els = {
     searchInput: document.getElementById('searchInput'),
@@ -39,18 +40,24 @@ function initTheme() {
 
 function setupEventListeners() {
     els.searchInput.addEventListener('input', debounce(() => {
+        forceShowAll = false; // Reset show all if typing
         els.clearSearchBtn.classList.toggle('hidden', els.searchInput.value.trim() === '');
         applyFiltersAndSort();
     }, 300));
 
     els.clearSearchBtn.addEventListener('click', () => {
+        forceShowAll = false; // Reset on clear
         els.searchInput.value = '';
         els.clearSearchBtn.classList.add('hidden');
         els.searchInput.focus();
         applyFiltersAndSort();
     });
 
-    els.groupFilter.addEventListener('change', applyFiltersAndSort);
+    els.groupFilter.addEventListener('change', () => {
+        forceShowAll = false;
+        applyFiltersAndSort();
+    });
+    
     els.sortOrder.addEventListener('change', applyFiltersAndSort);
     els.retryBtn.addEventListener('click', fetchData);
     els.exportCsvBtn.addEventListener('click', exportCSV);
@@ -67,6 +74,7 @@ function setupEventListeners() {
             els.searchInput.focus();
         }
         if (e.key === 'Escape') {
+            forceShowAll = false;
             els.searchInput.value = '';
             els.clearSearchBtn.classList.add('hidden');
             els.searchInput.blur();
@@ -116,16 +124,30 @@ function applyFiltersAndSort() {
     const group = els.groupFilter.value;
     const sort = els.sortOrder.value;
 
-    // UPDATE: Hide all data if search is empty
-    if (query === '') {
+    // Show logic: Show if searched, OR if group is selected, OR if "Show All" was clicked
+    const shouldShowData = query !== '' || group !== 'ALL' || forceShowAll;
+
+    if (!shouldShowData) {
         filteredData = [];
         els.resultsGrid.innerHTML = '';
         els.resultCount.textContent = '0 items';
-        els.emptyState.querySelector('p').textContent = "Type in the search bar to find items...";
+        
+        // Build the dynamic Empty State with the Show All button
+        els.emptyState.querySelector('p').innerHTML = `
+            Search an item, filter by Group, or <br><br>
+            <button id="showAllDataBtn" style="padding: 10px 20px; font-weight: bold; cursor: pointer; background: var(--primary-color); color: white; border: none; border-radius: 6px;">Show All Items</button>
+        `;
+        
+        document.getElementById('showAllDataBtn').addEventListener('click', () => {
+            forceShowAll = true;
+            applyFiltersAndSort();
+        });
+        
         toggleState('empty');
         return;
     }
 
+    // Reset empty state text for actual failed searches
     els.emptyState.querySelector('p').textContent = "No items found";
 
     filteredData = rawData.filter(item => {
@@ -166,27 +188,19 @@ function renderNextChunk() {
     
     chunk.forEach(item => {
         const card = document.createElement('div');
-        card.className = 'item-card';
-        // UPDATE: Removed Item ID and Purchase Rate visually from the card
+        card.className = 'item-row';
+        
+        // Clean 2-line layout
         card.innerHTML = `
-            <div class="card-header">
-                <div>
-                    <div class="item-name">${escapeHTML(item.itemName)}</div>
-                </div>
-                ${item.itemGroup ? `<span class="badge">${escapeHTML(item.itemGroup)}</span>` : ''}
-            </div>
-            <div class="card-body">
-                <div class="rate-box">
-                    <span class="rate-label">A Rate</span>
-                    <span class="rate-value">${formatCurrency(item.aRate)}</span>
-                </div>
-                <div class="rate-box">
-                    <span class="rate-label">B Rate</span>
-                    <span class="rate-value">${formatCurrency(item.bRate)}</span>
+            <div class="row-top">
+                <div class="row-name" onclick="copyToClipboard('${escapeHTML(item.itemName).replace(/'/g, "\\'")}')" title="Click to copy name">${escapeHTML(item.itemName)}</div>
+                <div class="row-rates">
+                    <span class="rate-badge rate-a">A: ${formatCurrency(item.aRate)}</span>
+                    <span class="rate-badge rate-b">B: ${formatCurrency(item.bRate)}</span>
                 </div>
             </div>
-            <div class="card-actions">
-                <button class="btn-secondary" onclick="copyToClipboard('${escapeHTML(item.itemName).replace(/'/g, "\\'")}')">Copy Name</button>
+            <div class="row-bottom">
+                <span class="row-group">${escapeHTML(item.itemGroup) || 'No Group'}</span>
             </div>
         `;
         fragment.appendChild(card);
