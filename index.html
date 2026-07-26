@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Busy Item Search</title>
+    
+    <!-- PWA Requirements -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1976d2">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="light-theme">
+    
+    <header class="app-header">
+        <div class="header-top">
+            <h1>Busy Item Search</h1>
+            <div class="header-actions">
+                <button id="installAppBtn" class="icon-btn hidden" title="Install App">
+                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                </button>
+                <button id="themeToggle" class="icon-btn" title="Toggle Dark Mode">
+                    <svg class="moon-icon" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="search-container">
+            <div class="search-bar">
+                <svg class="search-icon" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" id="searchInput" placeholder="Search by name, ID, group, rate... (Ctrl+K)" autocomplete="off">
+                <button id="clearSearchBtn" class="clear-btn hidden" title="Clear (Esc)">
+                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <div class="filters">
+                <select id="groupFilter" aria-label="Filter by Group">
+                    <option value="ALL">All Groups</option>
+                </select>
+                <select id="sortOrder" aria-label="Sort Order">
+                    <option value="NAME_ASC">Name A-Z</option>
+                    <option value="NAME_DESC">Name Z-A</option>
+                    <option value="PURCHASE_ASC">Purchase Rate: Low-High</option>
+                    <option value="PURCHASE_DESC">Purchase Rate: High-Low</option>
+                    <option value="ARATE_ASC">A Rate: Low-High</option>
+                    <option value="ARATE_DESC">A Rate: High-Low</option>
+                </select>
+            </div>
+            <div class="stats">
+                <span id="resultCount">0 items</span>
+                <div class="action-buttons">
+                    <button id="exportCsvBtn" title="Export CSV">CSV</button>
+                    <button id="copyAllBtn" title="Copy All">Copy All</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main id="mainContent">
+        <!-- States -->
+        <div id="loadingState" class="state-container">
+            <div class="spinner"></div>
+            <p>Loading items securely...</p>
+        </div>
+
+        <div id="errorState" class="state-container hidden">
+            <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            <p id="errorMessage">Unable to load data.</p>
+            <button id="retryBtn" class="primary-btn">Retry</button>
+        </div>
+
+        <div id="emptyState" class="state-container hidden">
+            <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="2" fill="none"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <p>No items found</p>
+        </div>
+
+        <!-- Results Grid -->
+        <div id="resultsGrid" class="results-grid hidden"></div>
+        <div id="loadMoreTrigger" class="load-more-trigger"></div>
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast hidden">Copied to clipboard</div>
+
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
