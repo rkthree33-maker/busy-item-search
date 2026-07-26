@@ -1,15 +1,12 @@
 /**
  * Busy Item Search - Main Application Logic
- * Architecture: Virtualized/Chunked rendering for performance, pure Vanilla JS.
  */
 
-// State
 let rawData = [];
 let filteredData = [];
 const CHUNK_SIZE = 50;
 let currentRenderIndex = 0;
 
-// DOM Elements
 const els = {
     searchInput: document.getElementById('searchInput'),
     clearSearchBtn: document.getElementById('clearSearchBtn'),
@@ -29,7 +26,6 @@ const els = {
     installAppBtn: document.getElementById('installAppBtn')
 };
 
-// Initialization
 document.addEventListener('DOMContentLoaded', () => {
     initTheme();
     setupEventListeners();
@@ -42,7 +38,6 @@ function initTheme() {
 }
 
 function setupEventListeners() {
-    // Search with Debounce
     els.searchInput.addEventListener('input', debounce(() => {
         els.clearSearchBtn.classList.toggle('hidden', els.searchInput.value.trim() === '');
         applyFiltersAndSort();
@@ -66,7 +61,6 @@ function setupEventListeners() {
         localStorage.setItem('theme', document.body.classList.contains('dark-theme') ? 'dark' : 'light');
     });
 
-    // Keyboard Shortcuts
     document.addEventListener('keydown', (e) => {
         if (e.ctrlKey && e.key === 'k') {
             e.preventDefault();
@@ -80,11 +74,8 @@ function setupEventListeners() {
         }
     });
 
-    // Infinite Scroll Intersection Observer
     const observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting) {
-            renderNextChunk();
-        }
+        if (entries[0].isIntersecting) renderNextChunk();
     }, { rootMargin: '200px' });
     observer.observe(els.loadMoreTrigger);
 }
@@ -125,32 +116,36 @@ function applyFiltersAndSort() {
     const group = els.groupFilter.value;
     const sort = els.sortOrder.value;
 
-    // Filter
+    // UPDATE: Hide all data if search is empty
+    if (query === '') {
+        filteredData = [];
+        els.resultsGrid.innerHTML = '';
+        els.resultCount.textContent = '0 items';
+        els.emptyState.querySelector('p').textContent = "Type in the search bar to find items...";
+        toggleState('empty');
+        return;
+    }
+
+    els.emptyState.querySelector('p').textContent = "No items found";
+
     filteredData = rawData.filter(item => {
         const matchesGroup = group === 'ALL' || item.itemGroup === group;
         if (!matchesGroup) return false;
-
-        if (!query) return true;
         
-        // Search across all fields
         const searchableText = `${item.itemName} ${item.itemId} ${item.itemGroup} ${item.purchaseRate} ${item.aRate} ${item.bRate}`.toLowerCase();
         return query.split(' ').every(term => searchableText.includes(term));
     });
 
-    // Sort
     filteredData.sort((a, b) => {
         switch(sort) {
             case 'NAME_ASC': return a.itemName.localeCompare(b.itemName);
             case 'NAME_DESC': return b.itemName.localeCompare(a.itemName);
-            case 'PURCHASE_ASC': return a.purchaseRate - b.purchaseRate;
-            case 'PURCHASE_DESC': return b.purchaseRate - a.purchaseRate;
             case 'ARATE_ASC': return a.aRate - b.aRate;
             case 'ARATE_DESC': return b.aRate - a.aRate;
             default: return 0;
         }
     });
 
-    // Reset render state
     currentRenderIndex = 0;
     els.resultsGrid.innerHTML = '';
     els.resultCount.textContent = `${filteredData.length} items`;
@@ -172,19 +167,15 @@ function renderNextChunk() {
     chunk.forEach(item => {
         const card = document.createElement('div');
         card.className = 'item-card';
+        // UPDATE: Removed Item ID and Purchase Rate visually from the card
         card.innerHTML = `
             <div class="card-header">
                 <div>
                     <div class="item-name">${escapeHTML(item.itemName)}</div>
-                    <span class="item-id">ID: ${escapeHTML(item.itemId)}</span>
                 </div>
                 ${item.itemGroup ? `<span class="badge">${escapeHTML(item.itemGroup)}</span>` : ''}
             </div>
             <div class="card-body">
-                <div class="rate-box">
-                    <span class="rate-label">Purchase</span>
-                    <span class="rate-value">${formatCurrency(item.purchaseRate)}</span>
-                </div>
                 <div class="rate-box">
                     <span class="rate-label">A Rate</span>
                     <span class="rate-value">${formatCurrency(item.aRate)}</span>
@@ -196,7 +187,6 @@ function renderNextChunk() {
             </div>
             <div class="card-actions">
                 <button class="btn-secondary" onclick="copyToClipboard('${escapeHTML(item.itemName).replace(/'/g, "\\'")}')">Copy Name</button>
-                <button class="btn-secondary" onclick="copyDetails('${escapeHTML(item.itemId)}', '${escapeHTML(item.itemName).replace(/'/g, "\\'")}', '${escapeHTML(item.itemGroup).replace(/'/g, "\\'")}', ${item.purchaseRate}, ${item.aRate}, ${item.bRate})">Copy Details</button>
             </div>
         `;
         fragment.appendChild(card);
@@ -206,7 +196,6 @@ function renderNextChunk() {
     currentRenderIndex += CHUNK_SIZE;
 }
 
-// Utility Functions
 function toggleState(state) {
     els.loadingState.classList.add('hidden');
     els.errorState.classList.add('hidden');
@@ -239,28 +228,22 @@ function formatCurrency(val) {
     return Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// Global scope for inline onclick handlers
 window.copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text).then(showToast);
-};
-
-window.copyDetails = (id, name, group, pRate, aRate, bRate) => {
-    const text = `Item: ${name}\nID: ${id}\nGroup: ${group}\nPurchase Rate: ${pRate}\nA Rate: ${aRate}\nB Rate: ${bRate}`;
     navigator.clipboard.writeText(text).then(showToast);
 };
 
 function copyAllResults() {
     if (filteredData.length === 0) return;
-    const text = filteredData.map(item => `${item.itemName}\t${item.itemId}\t${item.purchaseRate}\t${item.aRate}\t${item.bRate}`).join('\n');
-    navigator.clipboard.writeText(`Name\tID\tPurchase Rate\tA Rate\tB Rate\n${text}`).then(showToast);
+    const text = filteredData.map(item => `${item.itemName}\t${item.aRate}\t${item.bRate}`).join('\n');
+    navigator.clipboard.writeText(`Name\tA Rate\tB Rate\n${text}`).then(showToast);
 }
 
 function exportCSV() {
     if (filteredData.length === 0) return;
-    const headers = ['ItemID', 'Item Name', 'Item Group', 'Purchase Rate', 'A Rate', 'B Rate'];
+    const headers = ['Item Name', 'Item Group', 'A Rate', 'B Rate'];
     const csvContent = [
         headers.join(','),
-        ...filteredData.map(item => `"${item.itemId}","${item.itemName}","${item.itemGroup}",${item.purchaseRate},${item.aRate},${item.bRate}`)
+        ...filteredData.map(item => `"${item.itemName}","${item.itemGroup}",${item.aRate},${item.bRate}`)
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -278,7 +261,6 @@ function showToast() {
     setTimeout(() => els.toast.classList.add('hidden'), 2000);
 }
 
-// PWA Install Logic
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
@@ -290,18 +272,13 @@ els.installAppBtn.addEventListener('click', async () => {
     if (deferredPrompt) {
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') {
-            els.installAppBtn.classList.add('hidden');
-        }
+        if (outcome === 'accepted') els.installAppBtn.classList.add('hidden');
         deferredPrompt = null;
     }
 });
 
-// Register Service Worker
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('service-worker.js').catch(err => {
-            console.warn('Service Worker registration failed: ', err);
-        });
+        navigator.serviceWorker.register('service-worker.js').catch(err => console.warn(err));
     });
 }
